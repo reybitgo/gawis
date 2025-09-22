@@ -20,11 +20,14 @@ A comprehensive digital wallet solution built with Laravel 12, featuring secure 
 - **Transaction Logging**: Complete audit trail for all financial operations
 
 ### User Experience
-- **Responsive Design**: Mobile-first design using Tailwind CSS
+- **Progressive Web App (PWA)**: Installable app with offline capabilities
+- **Responsive Design**: Mobile-first design using CoreUI template
+- **Dark Mode Support**: Complete dark/light theme switching
 - **Real-time Updates**: Dynamic fee calculations and balance updates
 - **Pagination**: Efficient handling of large transaction volumes
 - **Custom Error Pages**: User-friendly error handling with clear guidance
 - **Intuitive Navigation**: Easy-to-use interface for all user types
+- **Offline Support**: Service worker for cached content and offline functionality
 
 ## 📋 Table of Contents
 
@@ -575,9 +578,468 @@ A: Implement regular database backups and maintain offsite copies. All transacti
 3. Follow Laravel upgrade guidelines
 4. Monitor system after updates
 
-## 🌐 Live Server Deployment Guide - Hostinger Cloud Startup
+## 🌐 Deployment Guides
 
-This section provides a complete step-by-step guide for deploying the Laravel E-Wallet system on Hostinger Cloud Startup package. This guide is designed for technical teams and beginners who need detailed instructions.
+This section provides deployment guides for different hosting environments.
+
+## 📁 Hostinger Shared Hosting Deployment (No SSH Required)
+
+This guide is for deploying to Hostinger Business/Premium shared hosting using only the File Manager interface - perfect for users without SSH access.
+
+### Prerequisites
+
+Before starting, ensure you have:
+- Hostinger Business or Premium shared hosting account
+- A domain name pointed to your hosting account
+- Access to Hostinger hPanel
+- Local development environment (for building assets)
+
+### Step 1: Prepare Your Local Files
+
+#### 1.1 Build Production Assets
+
+On your local development machine:
+
+```bash
+# Navigate to your project directory
+cd /path/to/your/gawis-project
+
+# Install production dependencies
+composer install --optimize-autoloader --no-dev
+
+# Build frontend assets for production
+npm run build
+
+# Clear development caches
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
+# Cache for production
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+#### 1.2 Prepare Environment File
+
+Create a production `.env` file:
+
+```env
+# Application Settings
+APP_NAME="Gawis E-Wallet"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://yourdomain.com
+APP_KEY=base64:your_generated_key_here
+
+# Database Configuration (get from Hostinger)
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=u123456789_gawis
+DB_USERNAME=u123456789_gawis_user
+DB_PASSWORD=your_database_password
+
+# Cache Configuration (for shared hosting)
+CACHE_DRIVER=file
+QUEUE_CONNECTION=database
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+
+# Mail Configuration (Hostinger SMTP)
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.hostinger.com
+MAIL_PORT=587
+MAIL_USERNAME=noreply@yourdomain.com
+MAIL_PASSWORD=your_email_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=noreply@yourdomain.com
+MAIL_FROM_NAME="${APP_NAME}"
+
+# Security
+BCRYPT_ROUNDS=12
+```
+
+### Step 2: Create Database on Hostinger
+
+#### 2.1 Access Database Management
+
+1. **Login to hPanel**:
+   - Go to [https://hpanel.hostinger.com](https://hpanel.hostinger.com)
+   - Login with your credentials
+   - Select your hosting account
+
+2. **Create Database**:
+   - Navigate to "Databases" → "MySQL Databases"
+   - Click "Create Database"
+   - Database name: `gawis_ewallet` (Hostinger will prefix with your user ID)
+   - Create database user with secure password
+   - Assign user to database with ALL PRIVILEGES
+
+3. **Note Database Credentials**:
+   - Database Host: `localhost`
+   - Database Name: `u123456789_gawis_ewallet` (with your actual prefix)
+   - Username: `u123456789_gawis_user` (with your actual prefix)
+   - Password: (the one you created)
+
+### Step 3: Upload Files to Hostinger
+
+#### 3.1 Create Archive for Upload
+
+Create a ZIP file of your entire project:
+
+```bash
+# Create ZIP archive (exclude node_modules and .git)
+zip -r gawis-ewallet.zip . -x "node_modules/*" ".git/*" "*.log" ".env.example"
+```
+
+#### 3.2 Upload via File Manager
+
+1. **Access File Manager**:
+   - In hPanel, go to "Files" → "File Manager"
+   - Navigate to `public_html` directory
+
+2. **Upload Project**:
+   - Click "Upload" button
+   - Select your `gawis-ewallet.zip` file
+   - Wait for upload to complete
+   - Right-click the ZIP file and select "Extract"
+   - Extract all files to `public_html`
+
+3. **Verify File Structure**:
+   ```
+   public_html/
+   ├── .htaccess           # Root redirect file
+   ├── public/             # Laravel public directory
+   ├── app/
+   ├── config/
+   ├── database/
+   ├── resources/
+   ├── routes/
+   ├── storage/
+   ├── vendor/
+   ├── composer.json
+   └── .env
+   ```
+
+### Step 4: Configure .htaccess Files
+
+#### 4.1 Root .htaccess (Already Included)
+
+The root `.htaccess` file should already be in place with this content:
+
+```apache
+# Force HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Redirect everything to public folder
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ /public/$1 [L]
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# Protect sensitive files
+<FilesMatch "\.(env|git|htaccess|htpasswd)$">
+    Order Allow,Deny
+    Deny from All
+</FilesMatch>
+
+# Disable directory browsing
+Options -Indexes
+
+# Protect Laravel directories
+RedirectMatch 403 ^/(.*)/(storage|vendor|config|database|resources|routes|tests)/(.*)$
+```
+
+#### 4.2 Public Directory .htaccess
+
+Ensure `public/.htaccess` contains:
+
+```apache
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+```
+
+### Step 5: Database Migration
+
+#### 5.1 Update .env File
+
+Using File Manager:
+1. Navigate to your project root in `public_html`
+2. Edit the `.env` file
+3. Update database credentials from Step 2
+4. Save the file
+
+#### 5.2 Run Migrations via Browser
+
+Create a temporary migration script `migrate.php` in the `public` directory:
+
+```php
+<?php
+// migrate.php - Temporary migration script
+require_once '../vendor/autoload.php';
+
+$app = require_once '../bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+// Run migrations
+echo "<h1>Running Migrations</h1>";
+try {
+    $kernel->call('migrate', ['--force' => true]);
+    echo "<p style='color: green;'>✅ Migrations completed successfully!</p>";
+
+    $kernel->call('db:seed', ['--force' => true]);
+    echo "<p style='color: green;'>✅ Database seeded successfully!</p>";
+
+    $kernel->call('storage:link');
+    echo "<p style='color: green;'>✅ Storage link created!</p>";
+
+} catch (Exception $e) {
+    echo "<p style='color: red;'>❌ Error: " . $e->getMessage() . "</p>";
+}
+
+echo "<h2>Migration Complete</h2>";
+echo "<p><strong>IMPORTANT:</strong> Delete this file immediately for security!</p>";
+?>
+```
+
+#### 5.3 Execute Migration
+
+1. **Upload Migration Script**:
+   - Upload `migrate.php` to the `public` directory
+   - Visit `https://yourdomain.com/migrate.php`
+   - Wait for migrations to complete
+
+2. **Delete Migration Script**:
+   - **IMMEDIATELY** delete `migrate.php` from the `public` directory
+   - This is critical for security
+
+### Step 6: Set File Permissions
+
+#### 6.1 Configure Permissions via File Manager
+
+Using Hostinger File Manager:
+
+1. **Storage Directory**:
+   - Right-click `storage` folder
+   - Select "Permissions"
+   - Set to `755` (or `775` if needed)
+   - Apply to all subdirectories
+
+2. **Bootstrap Cache**:
+   - Navigate to `bootstrap/cache`
+   - Set permissions to `755`
+
+3. **Public Directory**:
+   - Ensure `public` directory is `755`
+
+### Step 7: Create Admin User
+
+#### 7.1 Create Admin Script
+
+Create `admin.php` in the `public` directory:
+
+```php
+<?php
+// admin.php - Temporary admin creation script
+require_once '../vendor/autoload.php';
+
+$app = require_once '../bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+echo "<h1>Creating Admin User</h1>";
+
+try {
+    // Create admin user
+    $user = \App\Models\User::create([
+        'name' => 'System Administrator',
+        'email' => 'admin@yourdomain.com',
+        'password' => bcrypt('ChangeThisPassword123!'),
+        'email_verified_at' => now()
+    ]);
+
+    // Assign admin role
+    $user->assignRole('admin');
+
+    echo "<p style='color: green;'>✅ Admin user created successfully!</p>";
+    echo "<p><strong>Email:</strong> admin@yourdomain.com</p>";
+    echo "<p><strong>Password:</strong> ChangeThisPassword123!</p>";
+    echo "<p style='color: red;'><strong>Please change this password immediately!</strong></p>";
+
+} catch (Exception $e) {
+    echo "<p style='color: red;'>❌ Error: " . $e->getMessage() . "</p>";
+}
+
+echo "<h2>Admin Creation Complete</h2>";
+echo "<p><strong>IMPORTANT:</strong> Delete this file immediately for security!</p>";
+?>
+```
+
+#### 7.2 Execute Admin Creation
+
+1. **Upload Admin Script**:
+   - Upload `admin.php` to the `public` directory
+   - Visit `https://yourdomain.com/admin.php`
+   - Note the admin credentials
+
+2. **Delete Admin Script**:
+   - **IMMEDIATELY** delete `admin.php` from the `public` directory
+
+### Step 8: Configure System Settings
+
+#### 8.1 Initial Login
+
+1. **Access Admin Panel**:
+   - Visit `https://yourdomain.com/admin/login`
+   - Login with admin credentials from Step 7
+   - **Change password immediately**
+
+2. **Configure System**:
+   - Navigate to "System Settings"
+   - Configure wallet settings
+   - Set up transaction fees
+   - Configure payment methods
+
+### Step 9: Test PWA Functionality
+
+#### 9.1 Verify PWA Features
+
+1. **Check Manifest**:
+   - Visit `https://yourdomain.com/manifest.json`
+   - Verify it loads correctly
+
+2. **Test Service Worker**:
+   - Open browser developer tools
+   - Check Application → Service Workers
+   - Verify service worker is registered
+
+3. **Test Installation**:
+   - On mobile: Look for "Add to Home Screen" prompt
+   - On desktop: Look for install icon in address bar
+
+### Step 10: Final Security Steps
+
+#### 10.1 Secure Your Installation
+
+1. **Update Default Passwords**:
+   - Change admin password
+   - Update database passwords if needed
+
+2. **Remove Temporary Files**:
+   - Ensure `migrate.php` and `admin.php` are deleted
+   - Remove any other temporary files
+
+3. **Check File Permissions**:
+   - Verify sensitive files are not publicly accessible
+   - Test that `.env` file cannot be accessed via browser
+
+#### 10.2 Enable HTTPS
+
+1. **SSL Certificate**:
+   - In hPanel, go to "Security" → "SSL"
+   - Enable SSL for your domain
+   - Force HTTPS redirection
+
+2. **Test HTTPS**:
+   - Visit `https://yourdomain.com`
+   - Verify SSL certificate is valid
+   - Check that HTTP redirects to HTTPS
+
+### Step 11: Maintenance and Updates
+
+#### 11.1 Regular Maintenance
+
+1. **Monitor Logs**:
+   - Check `storage/logs/laravel.log` regularly
+   - Monitor for errors or issues
+
+2. **Backup Strategy**:
+   - Download database backups regularly
+   - Keep copies of your files
+   - Use Hostinger's backup features
+
+#### 11.2 Updating the Application
+
+To update the application:
+
+1. **Prepare Updates Locally**:
+   - Make changes in your local environment
+   - Test thoroughly
+   - Build production assets
+
+2. **Upload Updates**:
+   - Create new ZIP file
+   - Upload and extract to temporary directory
+   - Move updated files to live directory
+   - Run any necessary migrations
+
+### Common Issues and Solutions
+
+#### Issue 1: 500 Internal Server Error
+**Solution**: Check PHP version compatibility in hPanel → PHP Configuration
+
+#### Issue 2: Database Connection Error
+**Solution**: Verify database credentials in `.env` file
+
+#### Issue 3: Assets Not Loading
+**Solution**: Ensure `npm run build` was executed and files uploaded correctly
+
+#### Issue 4: Permission Denied Errors
+**Solution**: Check file permissions for `storage` and `bootstrap/cache` directories
+
+### Hostinger-Specific Features
+
+#### Using Hostinger Email
+Configure in `.env`:
+```env
+MAIL_HOST=smtp.hostinger.com
+MAIL_PORT=587
+MAIL_USERNAME=youraddress@yourdomain.com
+MAIL_PASSWORD=your_email_password
+MAIL_ENCRYPTION=tls
+```
+
+#### Hostinger PHP Configuration
+- Access hPanel → PHP Configuration
+- Ensure PHP 8.2+ is selected
+- Enable required extensions
+
+This completes the Hostinger shared hosting deployment guide. Your Laravel E-Wallet system should now be fully operational on shared hosting without requiring SSH access.
+
+---
+
+## 🌐 VPS Deployment Guide - Hostinger Cloud Startup (SSH Required)
+
+This section provides a complete step-by-step guide for deploying the Laravel E-Wallet system on Hostinger Cloud Startup package using SSH access.
 
 ### Prerequisites
 

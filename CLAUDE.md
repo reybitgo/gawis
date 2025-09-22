@@ -4,7 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Laravel 12 E-Wallet System - a digital wallet application for managing financial transactions with admin controls and user interfaces. The system uses Laravel Fortify for authentication and Spatie Laravel Permission for role-based access control.
+This is a Laravel 12 E-Wallet System - a comprehensive digital wallet application for managing financial transactions with robust admin controls and intuitive user interfaces. The system features:
+
+- **Authentication**: Laravel Fortify for secure user authentication
+- **Authorization**: Spatie Laravel Permission for role-based access control
+- **PWA Support**: Progressive Web App with offline capabilities and service worker
+- **Modern UI**: CoreUI template with dark mode support and responsive design
+- **Security**: .htaccess configuration for production deployment on shared hosting
+
+## Recent Features Added
+- ✅ PWA (Progressive Web App) implementation with service worker
+- ✅ Favicon and app icon optimization for all platforms
+- ✅ Dark mode compatibility across all admin and member interfaces
+- ✅ Consistent UI spacing and padding across wallet operation forms
+- ✅ Offline page with auto-retry functionality
+- ✅ Production-ready .htaccess configuration for Hostinger deployment
 
 ## Development Commands
 
@@ -141,3 +155,79 @@ php artisan test --coverage
 - Check transaction logs for completeness
 - Test both success and failure scenarios
 - Ensure atomic operations maintain data integrity
+
+## PWA & Modern Features
+
+### Progressive Web App (PWA)
+The application is now a full PWA with:
+- **Service Worker** (`/public/sw.js`): Handles caching, offline support, and background sync
+- **App Manifest** (`/public/manifest.json`): Defines app metadata and installation behavior
+- **Offline Page** (`/public/offline.html`): Custom offline experience with auto-retry
+- **Install Prompt**: Users can install the app on their devices
+
+### PWA Files Structure
+```
+/public/
+├── manifest.json          # PWA manifest file
+├── sw.js                 # Service worker for caching and offline support
+├── offline.html          # Custom offline page
+└── coreui-template/assets/favicon/  # App icons for all platforms
+```
+
+### Dark Mode Implementation
+- All admin and member interfaces support dark mode
+- Uses CSS variables for theme consistency
+- Automatic theme persistence in localStorage
+- Smooth transitions between light/dark themes
+
+### Key UI Improvements
+- **Consistent Spacing**: All wallet forms have proper padding (`mb-5` class)
+- **Responsive Design**: Mobile-optimized interfaces
+- **CoreUI Integration**: Modern component library with theme support
+- **Icon Updates**: Updated maintenance icons and consistent iconography
+
+## Deployment Configuration
+
+### Hostinger Shared Hosting
+- **Root .htaccess**: Redirects to `/public` folder with security headers
+- **Security Headers**: HTTPS enforcement, file protection, directory browsing disabled
+- **Asset Management**: Vite build process for production assets
+
+### Production Checklist
+1. Run `npm run build` for production assets
+2. Ensure `.htaccess` is in root directory
+3. Upload entire project maintaining folder structure
+4. Configure database credentials in `.env`
+5. Run `php artisan config:cache` and `php artisan route:cache`
+6. Test PWA functionality on HTTPS
+
+## Common UI Patterns
+
+### Adding Dark Mode Support to New Pages
+```css
+/* Use CSS variables for theme compatibility */
+[data-coreui-theme="dark"] .your-element {
+    background-color: var(--cui-card-bg);
+    color: var(--cui-body-color);
+    border-color: var(--cui-border-color);
+}
+```
+
+### Consistent Form Spacing
+```html
+<!-- Always add mb-5 to main form containers -->
+<div class="card shadow-sm mb-5">
+    <!-- Form content -->
+</div>
+```
+
+### PWA Service Worker Updates
+When adding new routes to cache, update the `CACHE_URLS` array in `/public/sw.js`:
+```javascript
+const CACHE_URLS = [
+    '/',
+    '/dashboard',
+    '/your-new-route',  // Add new routes here
+    // ... existing routes
+];
+```
