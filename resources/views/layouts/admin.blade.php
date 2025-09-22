@@ -24,10 +24,19 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('coreui-template/assets/favicon/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="96x96" href="{{ asset('coreui-template/assets/favicon/favicon-96x96.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('coreui-template/assets/favicon/favicon-16x16.png') }}">
-    <link rel="manifest" href="{{ asset('coreui-template/assets/favicon/manifest.json') }}">
-    <meta name="msapplication-TileColor" content="#ffffff">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="msapplication-TileColor" content="#0d6efd">
     <meta name="msapplication-TileImage" content="{{ asset('coreui-template/assets/favicon/apple-icon-144x144.png') }}">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#0d6efd">
+
+    <!-- PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Gawis E-Wallet">
+
+    <!-- Prevent iOS Safari from adding phone number links -->
+    <meta name="format-detection" content="telephone=no">
 
     <!-- CoreUI CSS -->
     <link href="{{ asset('coreui-template/vendors/simplebar/css/simplebar.css') }}" rel="stylesheet">
@@ -205,6 +214,70 @@
                 sidebar.classList.remove('sidebar-narrow');
                 sidebar.classList.remove('sidebar-narrow-unfoldable');
                 console.log('Sidebar initialized in full width mode for CoreUI unfoldable toggle');
+            }
+        });
+    </script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Check if service workers are supported
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', function() {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Show update notification
+                                    if (confirm('A new version is available. Refresh to update?')) {
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('PWA install prompt fired');
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show install button if needed
+            const installButton = document.getElementById('pwa-install-btn');
+            if (installButton) {
+                installButton.style.display = 'block';
+                installButton.addEventListener('click', () => {
+                    installButton.style.display = 'none';
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the PWA install prompt');
+                        } else {
+                            console.log('User dismissed the PWA install prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                });
+            }
+        });
+
+        // Check if app is already installed
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA was installed');
+            const installButton = document.getElementById('pwa-install-btn');
+            if (installButton) {
+                installButton.style.display = 'none';
             }
         });
     </script>
